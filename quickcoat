@@ -1,0 +1,289 @@
+#!/usr/bin/env julia
+
+using DataFrames
+using DataStructures
+using Bio.Seq
+
+function makeblastdb(input_filename,output_folder,input_folder)
+    println("Making BLAST database...")
+    blast_db_name = joinpath(output_folder, "reference_blast_database")
+    input_fullpath = joinpath(input_folder,input_filename)
+    run(`makeblastdb -dbtype prot -in $input_fullpath -out $blast_db_name`)
+end
+
+function determine_max_bitscore(db_filename, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder,threads)
+    println("Determining maximum bitscore...")
+    #determines max bitscore and finds multi-copy genes in reference genome
+    self_blast = runblast(db_filename, "reference_blast_database", input_folder,output_folder,threads)
+    max_bitscores = OrderedDict()
+    genes_to_exclude = Set()
+    for row in eachrow(self_blast)
+        if row[:qseqid] in keys(max_bitscores)
+            if row[:bitscore] > max_bitscores[row[:qseqid]]
+                max_bitscores[row[:qseqid]] = row[:bitscore]
+            end
+        else
+            max_bitscores[row[:qseqid]] = row[:bitscore]
+        end
+
+        
+
+        if (row[:qseqid] != row[:sseqid])&(row[:evalue] .< evalue_threshold)&(row[:pident] .> identity_threshold)&(row[:bitscore]/max_bitscores[row[:qseqid]] .> bitscore_ratio_threshold)
+            push!(genes_to_exclude,row[:qseqid])
+            push!(genes_to_exclude,row[:sseqid])
+        end
+
+    end
+
+    return (max_bitscores,genes_to_exclude)
+end
+
+function runblast(query_filename, db_filename, input_folder,output_folder,threads)
+    println("Running blastp...")
+    output_filename = joinpath(output_folder,query_filename*"reference_blast_database")
+    query_fullpath = joinpath(input_folder,query_filename)
+    db_fullpath = joinpath(output_folder,db_filename)
+    run(`blastp -query $query_fullpath -db $db_fullpath -outfmt 6 -out $output_filename -num_threads $threads`)
+    blast_output = readtable(output_filename, separator='\t')
+    names!(blast_output, [:qseqid,:sseqid,:pident,:length,:mismatch,:gapopen,:qstart,:qend,:sstart,:send,:evalue,:bitscore])
+    blast_output[:qseqid] = map(string,blast_output[:qseqid])
+    blast_output[:sseqid] = map(string,blast_output[:sseqid])
+    return blast_output
+end
+
+function parse_blast_output(blast_output_df, genome_filename, evalue_threshold, identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
+    println("Parsing blastp output...")
+    result_dict = OrderedDict()
+    
+    filtered_blast_output_df = blast_output_df[(blast_output_df[:evalue] .< evalue_threshold)&(blast_output_df[:pident] .> identity_threshold)&(blast_output_df[:bitscore_ratio] .> bitscore_ratio_threshold),:]
+    filtered_blast_output_df = filtered_blast_output_df[convert(DataArrays.DataArray{Bool,1},map(query_id->!in(query_id,genes_to_exclude),filtered_blast_output_df[:sseqid])),:]
+
+
+    for row in eachrow(filtered_blast_output_df)
+        query = row[:qseqid]
+        target = row[:sseqid]
+        if target in keys(result_dict)
+            push!(result_dict[target], query)
+        else
+            result_dict[target] = Set([query])
+        end
+    end
+
+    result_df = DataFrame()
+    result_df[:Ref_genes] = collect(keys(result_dict))
+    result_df[Symbol(genome_filename)] = collect(values(result_dict))
+
+    return result_df
+end
+
+function add_bitscore_ratio(blast_df, max_bitscores, wbsr_output_name)
+    bitscore_ratios = Float64[]
+    for row in eachrow(blast_df)
+        max_bitscore = max_bitscores[row[:sseqid]]
+        bitscore_ratio = row[:bitscore] / max_bitscore
+        push!(bitscore_ratios, bitscore_ratio)
+    end
+    blast_df[:bitscore_ratio] = bitscore_ratios
+    
+    writetable(wbsr_output_name,blast_df, separator='\t')
+    return blast_df
+end
+
+
+function make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude,threads)
+    genome_files = readdir(input_folder)[map(filename->endswith(filename,".faa"),readdir(input_folder))]
+    genome_number = string(length(genome_files))
+    println("Processing $genome_number genomes...")
+    deleteat!(genome_files,findin(genome_files,[reference_file]))
+    orthologue_table = DataFrame()
+    reference_file_all_lines =readlines(open(joinpath(input_folder,reference_file)))
+    reference_file_id_lines = reference_file_all_lines[map(line->startswith(line,">"),reference_file_all_lines)]
+    orthologue_table[:Ref_genes] = map(line->chomp(strip(split(line,' ')[1],'>')),reference_file_id_lines)
+    orthologue_table[:Ref_descriptions] = map(line->join(split(chomp(line),' ')[2:end],' '),reference_file_id_lines)
+    for genome_file in genome_files
+        println("Processing $genome_file ...")
+        blast_output = runblast(genome_file, "reference_blast_database", input_folder,output_folder,threads)
+        wbsr_output_name = joinpath(output_folder,genome_file*reference_file*"_wbsr")
+        blast_output_with_bitscore_ratio = add_bitscore_ratio(blast_output,max_bitscores, wbsr_output_name)
+        new_column = parse_blast_output(blast_output_with_bitscore_ratio,genome_file,evalue_threshold,identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
+        orthologue_table = join(orthologue_table, new_column, on=:Ref_genes,kind=:left)
+    end
+
+    writetable(joinpath(output_folder,"ortholog_table.tsv"), orthologue_table, separator='\t')
+
+    return orthologue_table
+end
+
+function find_single_copy_genes(ortholog_table, output_folder)
+    println("Identifying single-copy orthologues...")
+    table_width = size(ortholog_table)[2]
+    single_copy_ortholog_table = DataFrame()
+    for reference_gene in eachrow(ortholog_table)
+        if any(map(item->isna(item[2]),reference_gene)) == false
+            if vec(map(length,convert(Array,reference_gene)))[3:end] == ones(Int64,table_width-2)
+                if size(single_copy_ortholog_table,1) == 0
+                    single_copy_ortholog_table = reference_gene.df[reference_gene.row,:]
+                else
+                    append!(single_copy_ortholog_table,reference_gene.df[reference_gene.row,:])
+                end
+            end
+        end
+    end
+
+    println("Basing phylogeny on the following single-copy genes:\n")
+    
+    for item in single_copy_ortholog_table[:Ref_descriptions]
+        println(item)
+    end
+
+    number_of_orthologs = string(length(single_copy_ortholog_table[:Ref_descriptions]))
+    println("\n$number_of_orthologs orthologs will make up the alignment.")
+    writetable(joinpath(output_folder,"single_copy_ortholog_table.tsv"), single_copy_ortholog_table, separator='\t')
+    return single_copy_ortholog_table
+end
+
+
+function get_sequences(single_copy_ortholog_table,reference_file,input_folder)
+    println("Retrieving sequences from genomes...")
+    sequence_df = DataFrame()
+    delete!(single_copy_ortholog_table,:Ref_descriptions)
+    rename!(single_copy_ortholog_table,:Ref_genes,Symbol(reference_file))
+    for genome_file in names(single_copy_ortholog_table)[2:end]
+        single_copy_ortholog_table[genome_file] = map(single_set->collect(single_set)[1],single_copy_ortholog_table[genome_file])
+    end
+
+    for genome_file in map(string,names(single_copy_ortholog_table))
+        genome_specific_sequences = []
+
+        genome_dict = Dict()
+        genome = open(FASTAReader, joinpath(input_folder,genome_file))
+        for record in genome
+            genome_dict[record.name] = record
+        end
+
+
+
+        for ID in single_copy_ortholog_table[Symbol(genome_file)]
+            push!(genome_specific_sequences, genome_dict[ID])
+        end
+
+        sequence_df[Symbol(genome_file)] = genome_specific_sequences
+    end
+
+    return sequence_df
+end
+
+function align_sequences(sequence_table)
+    println("Aligning sequences...")
+    aligned_sequences_dict = OrderedDict()
+    for reference_sequence in eachrow(sequence_table)
+        fasta_input = ""
+        order_of_genes = []
+        for record in reference_sequence
+            fasta_input = fasta_input*">"*record[2].name*"\n"*string(record[2].seq)*"\n"
+            push!(order_of_genes,record[2].name)
+        end
+        aligned_sequences = readstring(pipeline(`muscle`,stdin=`echo $fasta_input`,stderr=DevNull))
+        single_line_aligned_sequences = single_line_sequence(aligned_sequences)
+        aligned_sequence_IDs = map(line->lstrip(line,'>'),split(single_line_aligned_sequences,'\n')[2:2:end])
+        aligned_sequences_seq_only = split(single_line_aligned_sequences,'\n')[3:2:end]
+        alignment_dict = Dict(zip(aligned_sequence_IDs,aligned_sequences_seq_only))
+        aligned_sequences = "\n"
+        for gene in order_of_genes
+            aligned_sequences = aligned_sequences*">"*gene*"\n"*alignment_dict[gene]*"\n"
+        end
+
+        aligned_sequences_dict[reference_sequence[1].name] = aligned_sequences
+    end
+
+    return aligned_sequences_dict
+end
+
+function single_line_sequence(sequence)
+    output_string = ""
+    for line in split(sequence,'\n')
+        if startswith(line,'>')
+            output_string = output_string*"\n"*line*"\n"
+        else
+            output_string = output_string*chomp(line)
+        end
+    end
+    return output_string
+end
+
+
+function concatenate_alignments(aligned_sequences,genome_names, output_folder)
+    println("Concatenating alignments...")
+    concatenated_alignments = fill("",length(genome_names))
+    for ortholog in aligned_sequences
+        concatenated_alignments = concatenated_alignments .* split(ortholog[2],'\n')[3:2:end]
+    end
+
+    output_string=""
+
+    for (i,genome_name) in enumerate(genome_names)
+        output_string = output_string*">"*genome_name*"\n"*concatenated_alignments[i]*"\n"
+    end
+
+    aligned_sequence_fasta_file = open(joinpath(output_folder,"concatenated_alignment.faa"),"w")
+    write(aligned_sequence_fasta_file,output_string)
+
+    return output_string
+end
+
+function parse_parameters(arguments)
+    println("quickCOAT: quick Concatenated Ortholog Alignment Trees")
+    println("Ian P.G. Marshall 2016")
+
+    evalue_threshold = Inf
+    identity_threshold = 0.0
+    output_filename = "orthologue_table.tsv"
+    reference_file = ""
+    input_folder = ""
+    bitscore_ratio_threshold = 0.0
+    output_folder = "ortholog_table_output"
+    threads = "2"
+
+    for (marker,value) in zip(arguments[1:2:length(arguments)],arguments[2:2:length(arguments)])
+        println(marker*" = "*value)
+        if marker == "-r"||marker == "--reference"
+            reference_file = value
+        elseif marker == "-q"||marker == "--query_folder"
+            input_folder = value
+        elseif marker == "-e"||marker == "--evalue_threshold"
+            evalue_threshold = parse(Float64,value)
+        elseif marker == "-i"||marker == "--identity_threshold"
+            identity_threshold = parse(Float64,value)
+        elseif marker == "-o"||marker == "--output_folder"
+            output_folder = value
+        elseif marker == "-b"||marker == "--bitscore_threshold"
+            bitscore_ratio_threshold = parse(Float64,value)
+        elseif marker == "-t"||marker == "--threads"
+            threads = value
+        end
+    end
+    
+    if reference_file == ""
+        println("Error: no reference file given")
+        exit()
+    elseif input_folder == ""
+        println("Error: no input folder given")
+        exit()
+    elseif in(output_folder,readdir())
+        println("Error: output folder $output_folder already exists. Delete it or use another name and try again.")
+        exit()
+    end
+
+    mkdir(output_folder)
+    makeblastdb(reference_file,output_folder,input_folder)
+    max_bitscores,genes_to_exclude = determine_max_bitscore(reference_file, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder,threads)
+    ortholog_table = make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude,threads)
+    single_copy_ortholog_table = find_single_copy_genes(ortholog_table, output_folder)
+    sequence_table = get_sequences(single_copy_ortholog_table,reference_file,input_folder)
+    aligned_sequences = align_sequences(sequence_table)
+    genome_names = map(string,names(sequence_table))
+    concatenated_alignments = concatenate_alignments(aligned_sequences,genome_names,output_folder)
+    println("ortholog_tree is now done. Results in $output_folder")
+end
+
+parse_parameters(ARGS)
