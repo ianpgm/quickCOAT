@@ -10,6 +10,10 @@ The following programs must be installed and executable from your $PATH:
 * [BLAST+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 * [muscle](http://www.drive5.com/muscle/manual/install.html)
 
+You will also need some way of building a phylogenetic tree using the sequence alignment that quickCOAT generates. Here are some options:
+* [PhyML](http://www.atgc-montpellier.fr/phyml/binaries.php)
+* [FastTree](http://www.microbesonline.org/fasttree/)
+
 ###Installation
 Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the file `quickcoat` executable and add it to your $PATH. For example, on Linux or MacOS:
 ```
