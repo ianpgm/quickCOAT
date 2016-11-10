@@ -39,4 +39,4 @@ The output will appear in the folder that you specify. The following files will 
 * `concatenated_alignment.faa`: This is the concatenated protein alignment in FASTA format, suitable for building phylogenetic trees.
 
 ##How it works
-![quickCOAT overview chart](https://github.com/ianpgm/quickcoat/blob/master/overview_chart.pdf)
+![quickCOAT overview chart](https://github.com/ianpgm/quickCOAT/blob/master/overview_chart.pdf)
