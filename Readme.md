@@ -12,9 +12,11 @@ The following programs must be installed and executable from your $PATH:
 
 ###Installation
 Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the file `quickcoat` executable and add it to your $PATH. For example, on Linux or MacOS:
-    wget https://github.com/ianpgm/quickCOAT/archive/v0.1-alpha.tar.gz
-    tar zxvf quickCOAT-0.1-alpha.tar.gz
-    ln -s quickCOAT-0.1-alpha/quickcoat ~/bin/quickcoat
+```
+wget https://github.com/ianpgm/quickCOAT/archive/v0.1-alpha.tar.gz
+tar zxvf quickCOAT-0.1-alpha.tar.gz
+ln -s quickCOAT-0.1-alpha/quickcoat ~/bin/quickcoat
+```
 
 ##Usage
 1. Make a new folder.
