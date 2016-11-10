@@ -1,6 +1,6 @@
 #quickCOAT: quick Concatenated Ortholog Alignment Tree
 
-quickCOAT produces a concatenated protein alignment based on input protein sequences from several genomes.
+quickCOAT produces a concatenated protein alignment based on input protein sequences from several genomes. It starts out by defining single-copy orthologs amongst the set of genomes you specify and uses those to build the alignment. A set of closely related organisms will therefore have a long alignment to compensate for limited divergence, while distantly related genome phylogenies will be based on fewer orthologs. In this way, quickCOAT is a fast, automated way to define the best possible set of orthologs for your phylogeny.
 
 ##Installation
 ###Prerequisites
@@ -39,3 +39,4 @@ The output will appear in the folder that you specify. The following files will 
 * `concatenated_alignment.faa`: This is the concatenated protein alignment in FASTA format, suitable for building phylogenetic trees.
 
 ##How it works
+![quickCOAT overview chart](https://github.com/ianpgm/quickcoat/blob/master/overview_chart.pdf)
