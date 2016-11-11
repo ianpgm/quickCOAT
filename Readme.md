@@ -17,11 +17,14 @@ You will also need some way of building a phylogenetic tree using the sequence a
 ###Installation
 Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the files `quickcoat`,`quickcoat.fasta_to_phylip`,`quickcoat.run_test` executable and add them to your $PATH. For example, on Linux or MacOS, if `~/bin` is in your $PATH:
 ```
-wget https://github.com/ianpgm/quickCOAT/archive/v0.1-alpha.tar.gz
-tar zxvf quickCOAT-0.1-alpha.tar.gz
-ln -s /path/to/quickCOAT-0.1-alpha/quickcoat ~/bin/quickcoat
-ln -s /path/to/quickCOAT-0.1-alpha/quickcoat.fasta_to_phylip ~/bin/quickcoat.fasta_to_phylip
-ln -s /path/to/quickCOAT-0.1-alpha/quickcoat.run_test ~/bin/quickcoat.run_test
+wget https://github.com/ianpgm/quickCOAT/archive/v0.2.0.tar.gz
+tar zxvf quickCOAT-0.2.0.tar.gz
+chmod +x quickCOAT-0.2.0/quickcoat
+chmod +x quickCOAT-0.2.0/quickcoat.fasta_to_phylip
+chmod +x quickCOAT-0.2.0/quickcoat.run_test
+ln -s /path/to/quickCOAT-0.2.0/quickcoat ~/bin/quickcoat
+ln -s /path/to/quickCOAT-0.2.0/quickcoat.fasta_to_phylip ~/bin/quickcoat.fasta_to_phylip
+ln -s /path/to/quickCOAT-0.2.0/quickcoat.run_test ~/bin/quickcoat.run_test
 ```
 You can run the test to see whether quickCOAT is working correctly by typing `quickcoat.run_test`.
 
