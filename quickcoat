@@ -231,9 +231,30 @@ function concatenate_alignments(aligned_sequences,genome_names, output_folder)
     return output_string
 end
 
+function display_help()
+    println("\nInstructions for use:\n")
+
+    readme_file = readlines(open(joinpath(dirname(readlink(@__FILE__())),"Readme.md")))
+    usage =false
+    for line in readme_file
+
+        if startswith(line, "##Usage")
+            usage = true
+        elseif startswith(line, "##How it works")
+            usage = false
+        end
+
+        if usage
+            print(line)
+        end
+
+    end
+end
+
 function parse_parameters(arguments)
     println("quickCOAT: quick Concatenated Ortholog Alignment Trees")
     println("Ian P.G. Marshall 2016")
+    println("https://github.com/ianpgm/quickCOAT")
 
     evalue_threshold = Inf
     identity_threshold = 0.0
@@ -243,6 +264,17 @@ function parse_parameters(arguments)
     bitscore_ratio_threshold = 0.0
     output_folder = "ortholog_table_output"
     threads = "2"
+
+    if length(arguments) == 0
+        println("No arguments given")
+        println("Type quickcoat -h for help")
+        exit()
+    end
+
+    if first(arguments) == "-h"||first(arguments) == "--help"
+        display_help()
+        exit()
+    end
 
     for (marker,value) in zip(arguments[1:2:length(arguments)],arguments[2:2:length(arguments)])
         println(marker*" = "*value)
@@ -265,12 +297,15 @@ function parse_parameters(arguments)
     
     if reference_file == ""
         println("Error: no reference file given")
+        println("Type quickcoat -h for help")
         exit()
     elseif input_folder == ""
         println("Error: no input folder given")
+        println("Type quickcoat -h for help")
         exit()
     elseif in(output_folder,readdir())
         println("Error: output folder $output_folder already exists. Delete it or use another name and try again.")
+        println("Type quickcoat -h for help")
         exit()
     end
 
@@ -283,7 +318,7 @@ function parse_parameters(arguments)
     aligned_sequences = align_sequences(sequence_table)
     genome_names = map(string,names(sequence_table))
     concatenated_alignments = concatenate_alignments(aligned_sequences,genome_names,output_folder)
-    println("ortholog_tree is now done. Results in $output_folder")
+    println("quickCOAT is now done. Results in $output_folder")
 end
 
 parse_parameters(ARGS)

@@ -15,11 +15,12 @@ You will also need some way of building a phylogenetic tree using the sequence a
 * [FastTree](http://www.microbesonline.org/fasttree/)
 
 ###Installation
-Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the file `quickcoat` executable and add it to your $PATH. For example, on Linux or MacOS:
+Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the file `quickcoat` executable and add it to your $PATH. For example, on Linux or MacOS, if `~/bin` is in your $PATH:
 ```
 wget https://github.com/ianpgm/quickCOAT/archive/v0.1-alpha.tar.gz
 tar zxvf quickCOAT-0.1-alpha.tar.gz
-ln -s quickCOAT-0.1-alpha/quickcoat ~/bin/quickcoat
+ln -s /path/to/quickCOAT-0.1-alpha/quickcoat ~/bin/quickcoat
+ln -s /path/to/quickCOAT-0.1-alpha/quickcoat.fasta_to_phylip ~/bin/quickcoat.fasta_to_phylip
 ```
 
 ##Usage
@@ -34,6 +35,7 @@ ln -s quickCOAT-0.1-alpha/quickcoat ~/bin/quickcoat
   * `-b` or `--bitscore_threshold`: The bitscore ratio threshold to have a pair of sequences count as an ortholog. For example, `0.9`. The default is 0 (no threshold).
   * `-t` or `--threads`: The `num_threads` parameter that is passed to BLAST+.
 4. An example command: `quickcoat -r genome_of_interest.faa -q input_sequence_folder -e 0.00001 -i 35 -t 8 -o output_folder`
+5. Some tree-building software requires a phylip-formatted file for input (e.g. PhyML). A program for this is included. Use the following command: `quickcoat.fasta_to_phylip input_sequence_folder/concatenated_alignment.faa`.
 
 ##Output
 The output will appear in the folder that you specify. The following files will be generated:
