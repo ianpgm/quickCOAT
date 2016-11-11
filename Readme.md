@@ -1,6 +1,6 @@
 #quickCOAT: quick Concatenated Ortholog Alignment Tree
 
-quickCOAT produces a concatenated protein alignment based on input protein sequences from several genomes. It starts out by defining single-copy orthologs amongst the set of genomes you specify and uses those to build the alignment. A set of closely related organisms will therefore have a long alignment to compensate for limited divergence, while distantly related genome phylogenies will be based on fewer orthologs. In this way, quickCOAT is a fast, automated way to define the best possible set of orthologs for your phylogeny.
+quickCOAT produces a concatenated protein alignment based on input protein sequences from several genomes. It starts out by defining single-copy orthologs amongst the set of genomes you specify and uses those to build the alignment. A set of closely related organisms will therefore have a long alignment to compensate for limited divergence, while distantly related genome phylogenies will be based on fewer orthologs. In this way, quickCOAT is a fast, automated way to define the best possible set of orthologs for your concatenated protein phylogeny.
 
 ##Installation
 ###Prerequisites
@@ -15,13 +15,15 @@ You will also need some way of building a phylogenetic tree using the sequence a
 * [FastTree](http://www.microbesonline.org/fasttree/)
 
 ###Installation
-Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the file `quickcoat` executable and add it to your $PATH. For example, on Linux or MacOS, if `~/bin` is in your $PATH:
+Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the files `quickcoat`,`quickcoat.fasta_to_phylip`,`quickcoat.run_test` executable and add them to your $PATH. For example, on Linux or MacOS, if `~/bin` is in your $PATH:
 ```
 wget https://github.com/ianpgm/quickCOAT/archive/v0.1-alpha.tar.gz
 tar zxvf quickCOAT-0.1-alpha.tar.gz
 ln -s /path/to/quickCOAT-0.1-alpha/quickcoat ~/bin/quickcoat
 ln -s /path/to/quickCOAT-0.1-alpha/quickcoat.fasta_to_phylip ~/bin/quickcoat.fasta_to_phylip
+ln -s /path/to/quickCOAT-0.1-alpha/quickcoat.run_test ~/bin/quickcoat.run_test
 ```
+You can run the test to see whether quickCOAT is working correctly by typing `quickcoat.run_test`.
 
 ##Usage
 1. Make a new folder.
