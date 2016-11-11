@@ -48,3 +48,6 @@ The output will appear in the folder that you specify. The following files will 
 
 ##How it works
 ![quickCOAT overview chart](https://github.com/ianpgm/quickCOAT/blob/master/overview_chart.png)
+
+##Getting help
+If something isn't working, please post an [issue on Github](https://github.com/ianpgm/quickCOAT/issues) or send an email to the author, ianpgm at bios dot au dot dk.
