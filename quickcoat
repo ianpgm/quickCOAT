@@ -1,7 +1,74 @@
 #!/usr/bin/env julia
 
-using DataFrames
-using DataStructures
+function parse_parameters(arguments)
+    println("quickCOAT: quick Concatenated Ortholog Alignment Trees")
+    println("Ian P.G. Marshall 2016")
+    println("https://github.com/ianpgm/quickCOAT")
+
+    parameter_dict = Dict()
+
+    parameter_dict["evalue_threshold"] = Inf
+    parameter_dict["identity_threshold"] = 0.0
+    parameter_dict["output_filename"] = "orthologue_table.tsv"
+    parameter_dict["reference_file"] = ""
+    parameter_dict["input_folder"] = ""
+    parameter_dict["bitscore_ratio_threshold"] = 0.0
+    parameter_dict["output_folder"] = "ortholog_table_output"
+    parameter_dict["threads"] = 2
+
+    if length(arguments) == 0
+        println("No arguments given")
+        println("Type quickcoat -h for help")
+        exit()
+    end
+
+    if first(arguments) == "-h"||first(arguments) == "--help"
+        display_help()
+        exit()
+    end
+
+    for (marker,value) in zip(arguments[1:2:length(arguments)],arguments[2:2:length(arguments)])
+        println(marker*" = "*value)
+        if marker == "-r"||marker == "--reference"
+            parameter_dict["reference_file"] = value
+        elseif marker == "-q"||marker == "--query_folder"
+            parameter_dict["input_folder"] = value
+        elseif marker == "-e"||marker == "--evalue_threshold"
+            parameter_dict["evalue_threshold"] = parse(Float64,value)
+        elseif marker == "-i"||marker == "--identity_threshold"
+            parameter_dict["identity_threshold"] = parse(Float64,value)
+        elseif marker == "-o"||marker == "--output_folder"
+            parameter_dict["output_folder"] = value
+        elseif marker == "-b"||marker == "--bitscore_threshold"
+            parameter_dict["bitscore_ratio_threshold"] = parse(Float64,value)
+        elseif marker == "-t"||marker == "--threads"
+            parameter_dict["threads"] = parse(Int32,value)
+        end
+    end
+    
+    if parameter_dict["reference_file"] == ""
+        println("Error: no reference file given")
+        println("Type quickcoat -h for help")
+        exit()
+    elseif parameter_dict["input_folder"] == ""
+        println("Error: no input folder given")
+        println("Type quickcoat -h for help")
+        exit()
+    elseif in(parameter_dict["output_folder"],readdir())
+        println("Error: output folder $output_folder already exists. Delete it or use another name and try again.")
+        println("Type quickcoat -h for help")
+        exit()
+    end
+
+    return parameter_dict
+end
+
+parameter_dict = parse_parameters(ARGS)
+
+addprocs(parameter_dict["threads"])
+
+@everywhere using DataFrames
+@everywhere using DataStructures
 using Bio.Seq
 
 function makeblastdb(input_filename,output_folder,input_folder)
@@ -11,10 +78,10 @@ function makeblastdb(input_filename,output_folder,input_folder)
     run(`makeblastdb -dbtype prot -in $input_fullpath -out $blast_db_name`)
 end
 
-function determine_max_bitscore(db_filename, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder,threads)
+function determine_max_bitscore(db_filename, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder)
     println("Determining maximum bitscore...")
     #determines max bitscore and finds multi-copy genes in reference genome
-    self_blast = runblast(db_filename, "reference_blast_database", input_folder,output_folder,threads)
+    self_blast = runblast(db_filename, "reference_blast_database", input_folder,output_folder)
     max_bitscores = OrderedDict()
     genes_to_exclude = Set()
     for row in eachrow(self_blast)
@@ -38,20 +105,16 @@ function determine_max_bitscore(db_filename, output_folder, evalue_threshold, id
     return (max_bitscores,genes_to_exclude)
 end
 
-function runblast(query_filename, db_filename, input_folder,output_folder,threads)
+@everywhere function runblast(query_filename, db_filename, input_folder,output_folder)
     println("Running blastp...")
-    output_filename = joinpath(output_folder,query_filename*"reference_blast_database")
     query_fullpath = joinpath(input_folder,query_filename)
     db_fullpath = joinpath(output_folder,db_filename)
-    run(`blastp -query $query_fullpath -db $db_fullpath -outfmt 6 -out $output_filename -num_threads $threads`)
-    blast_output = readtable(output_filename, separator='\t')
-    names!(blast_output, [:qseqid,:sseqid,:pident,:length,:mismatch,:gapopen,:qstart,:qend,:sstart,:send,:evalue,:bitscore])
-    blast_output[:qseqid] = map(string,blast_output[:qseqid])
-    blast_output[:sseqid] = map(string,blast_output[:sseqid])
+    raw_blast_output = readdlm(open(`blastp -query $query_fullpath -db $db_fullpath -outfmt 6`)[2],'\t')
+    blast_output = DataFrame(qseqid = map(string,raw_blast_output[:,1]),sseqid = map(string,raw_blast_output[:,2]),pident=raw_blast_output[:,3],evalue=raw_blast_output[:,11],bitscore=raw_blast_output[:,12])
     return blast_output
 end
 
-function parse_blast_output(blast_output_df, genome_filename, evalue_threshold, identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
+@everywhere function parse_blast_output(blast_output_df, genome_filename, evalue_threshold, identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
     println("Parsing blastp output...")
     result_dict = OrderedDict()
     
@@ -76,7 +139,7 @@ function parse_blast_output(blast_output_df, genome_filename, evalue_threshold, 
     return result_df
 end
 
-function add_bitscore_ratio(blast_df, max_bitscores, wbsr_output_name)
+@everywhere function add_bitscore_ratio(blast_df, max_bitscores, wbsr_output_name)
     bitscore_ratios = Float64[]
     for row in eachrow(blast_df)
         max_bitscore = max_bitscores[row[:sseqid]]
@@ -90,7 +153,17 @@ function add_bitscore_ratio(blast_df, max_bitscores, wbsr_output_name)
 end
 
 
-function make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude,threads)
+@everywhere function process_genome(genome_file, input_folder, output_folder,reference_file,max_bitscores,evalue_threshold,identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
+    println("Processing $genome_file ...")
+    blast_output = runblast(genome_file, "reference_blast_database", input_folder,output_folder)
+    wbsr_output_name = joinpath(output_folder,genome_file*reference_file*"_wbsr")
+    blast_output_with_bitscore_ratio = add_bitscore_ratio(blast_output,max_bitscores, wbsr_output_name)
+    new_column = parse_blast_output(blast_output_with_bitscore_ratio,genome_file,evalue_threshold,identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
+    return new_column
+end
+
+
+function make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude)
     genome_files = readdir(input_folder)[map(filename->endswith(filename,".faa"),readdir(input_folder))]
     genome_number = string(length(genome_files))
     println("Processing $genome_number genomes...")
@@ -100,12 +173,10 @@ function make_table(input_folder, reference_file, evalue_threshold, identity_thr
     reference_file_id_lines = reference_file_all_lines[map(line->startswith(line,">"),reference_file_all_lines)]
     orthologue_table[:Ref_genes] = map(line->chomp(strip(split(line,' ')[1],'>')),reference_file_id_lines)
     orthologue_table[:Ref_descriptions] = map(line->join(split(chomp(line),' ')[2:end],' '),reference_file_id_lines)
-    for genome_file in genome_files
-        println("Processing $genome_file ...")
-        blast_output = runblast(genome_file, "reference_blast_database", input_folder,output_folder,threads)
-        wbsr_output_name = joinpath(output_folder,genome_file*reference_file*"_wbsr")
-        blast_output_with_bitscore_ratio = add_bitscore_ratio(blast_output,max_bitscores, wbsr_output_name)
-        new_column = parse_blast_output(blast_output_with_bitscore_ratio,genome_file,evalue_threshold,identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
+    
+    new_columns = pmap(filename -> process_genome(filename, input_folder, output_folder,reference_file,max_bitscores,evalue_threshold,identity_threshold,bitscore_ratio_threshold,genes_to_exclude),genome_files)
+
+    for new_column in new_columns
         orthologue_table = join(orthologue_table, new_column, on=:Ref_genes,kind=:left)
     end
 
@@ -251,68 +322,19 @@ function display_help()
     end
 end
 
-function parse_parameters(arguments)
-    println("quickCOAT: quick Concatenated Ortholog Alignment Trees")
-    println("Ian P.G. Marshall 2016")
-    println("https://github.com/ianpgm/quickCOAT")
 
-    evalue_threshold = Inf
-    identity_threshold = 0.0
-    output_filename = "orthologue_table.tsv"
-    reference_file = ""
-    input_folder = ""
-    bitscore_ratio_threshold = 0.0
-    output_folder = "ortholog_table_output"
-    threads = "2"
-
-    if length(arguments) == 0
-        println("No arguments given")
-        println("Type quickcoat -h for help")
-        exit()
-    end
-
-    if first(arguments) == "-h"||first(arguments) == "--help"
-        display_help()
-        exit()
-    end
-
-    for (marker,value) in zip(arguments[1:2:length(arguments)],arguments[2:2:length(arguments)])
-        println(marker*" = "*value)
-        if marker == "-r"||marker == "--reference"
-            reference_file = value
-        elseif marker == "-q"||marker == "--query_folder"
-            input_folder = value
-        elseif marker == "-e"||marker == "--evalue_threshold"
-            evalue_threshold = parse(Float64,value)
-        elseif marker == "-i"||marker == "--identity_threshold"
-            identity_threshold = parse(Float64,value)
-        elseif marker == "-o"||marker == "--output_folder"
-            output_folder = value
-        elseif marker == "-b"||marker == "--bitscore_threshold"
-            bitscore_ratio_threshold = parse(Float64,value)
-        elseif marker == "-t"||marker == "--threads"
-            threads = value
-        end
-    end
-    
-    if reference_file == ""
-        println("Error: no reference file given")
-        println("Type quickcoat -h for help")
-        exit()
-    elseif input_folder == ""
-        println("Error: no input folder given")
-        println("Type quickcoat -h for help")
-        exit()
-    elseif in(output_folder,readdir())
-        println("Error: output folder $output_folder already exists. Delete it or use another name and try again.")
-        println("Type quickcoat -h for help")
-        exit()
-    end
+function main(parameter_dict)
+    output_folder = parameter_dict["output_folder"]
+    reference_file = parameter_dict["reference_file"]
+    input_folder = parameter_dict["input_folder"]
+    evalue_threshold = parameter_dict["evalue_threshold"]
+    identity_threshold = parameter_dict["identity_threshold"]
+    bitscore_ratio_threshold = parameter_dict["bitscore_ratio_threshold"]
 
     mkdir(output_folder)
     makeblastdb(reference_file,output_folder,input_folder)
-    max_bitscores,genes_to_exclude = determine_max_bitscore(reference_file, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder,threads)
-    ortholog_table = make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude,threads)
+    max_bitscores,genes_to_exclude = determine_max_bitscore(reference_file, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder)
+    ortholog_table = make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude)
     single_copy_ortholog_table = find_single_copy_genes(ortholog_table, output_folder)
     sequence_table = get_sequences(single_copy_ortholog_table,reference_file,input_folder)
     aligned_sequences = align_sequences(sequence_table)
@@ -321,4 +343,4 @@ function parse_parameters(arguments)
     println("quickCOAT is now done. Results in $output_folder")
 end
 
-parse_parameters(ARGS)
+main(parameter_dict)

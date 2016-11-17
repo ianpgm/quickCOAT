@@ -2,6 +2,7 @@
 
 function quickcoat_test()
     println("Running quickCOAT test...")
+    println(@__FILE__())
     quickcoat_executable = joinpath(dirname(readlink(@__FILE__())),"quickcoat")
     query_folder = joinpath(dirname(readlink(@__FILE__())),"test_data")
     output_folder = joinpath(tempdir(),"quickcoat_test_"*join(rand(collect('A':'Z'),10)))
