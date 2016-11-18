@@ -1,5 +1,33 @@
 #!/usr/bin/env julia
 
+function this_file_dir()
+    if islink(@__FILE__())
+        return dirname(readlink(@__FILE__()))
+    else
+        return dirname(@__FILE__())
+    end
+end
+
+function display_help()
+    println("\nInstructions for use:\n")
+
+    readme_file = readlines(open(joinpath(this_file_dir(),"Readme.md")))
+    usage =false
+    for line in readme_file
+
+        if startswith(line, "##Usage")
+            usage = true
+        elseif startswith(line, "##How it works")
+            usage = false
+        end
+
+        if usage
+            print(line)
+        end
+
+    end
+end
+
 function parse_parameters(arguments)
     println("quickCOAT: quick Concatenated Ortholog Alignment Trees")
     println("Ian P.G. Marshall 2016")
@@ -310,25 +338,6 @@ function concatenate_alignments(aligned_sequences,genome_names, output_folder)
     return output_string
 end
 
-function display_help()
-    println("\nInstructions for use:\n")
-
-    readme_file = readlines(open(joinpath(dirname(readlink(@__FILE__())),"Readme.md")))
-    usage =false
-    for line in readme_file
-
-        if startswith(line, "##Usage")
-            usage = true
-        elseif startswith(line, "##How it works")
-            usage = false
-        end
-
-        if usage
-            print(line)
-        end
-
-    end
-end
 
 
 function main(parameter_dict)
