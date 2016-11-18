@@ -44,7 +44,7 @@ You can run the test to see whether quickCOAT is working correctly by typing `qu
   * `-i` or `--identity_threshold`: The minimum percentage identity from the BLAST results to have a pair of sequences count as an ortholog. For example, `35`. The default is 0 (no threshold.)
   * `-o` or `--output_folder`: The name of the folder quickCOAT will create with your output files. This folder cannot already exist, otherwise it will produce an error.
   * `-b` or `--bitscore_threshold`: The bitscore ratio threshold to have a pair of sequences count as an ortholog. For example, `0.9`. The default is 0 (no threshold).
-  * `-t` or `--threads`: The number of blastp instances that will be run in parallel.
+  * `-t` or `--threads`: The number of blastp and muscle instances that will be run in parallel.
 4. An example command: `quickcoat -r genome_of_interest.faa -q input_sequence_folder -e 0.00001 -i 35 -t 8 -o output_folder`
 5. Some tree-building software requires a phylip- or nexus-formatted file for input (e.g. PhyML, MrBayes). Programs for this are included. Use the following commands: `quickcoat.fasta_to_phylip input_sequence_folder/concatenated_alignment.faa` and `quickcoat.fasta_to_nexus input_sequence_folder/concatenated_alignment.faa`. The files `concatenated_alignment.phy` or `concatenated_alignment.nex` respectively will appear in your output folder.
 

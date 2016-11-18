@@ -244,33 +244,41 @@ function get_sequences(single_copy_ortholog_table,reference_file,input_folder)
     return sequence_df
 end
 
+
+@everywhere function runmuscle(input_row)
+    fasta_input = ""
+    order_of_genes = []
+    for record in input_row
+        fasta_input = fasta_input*">"*record[2].name*"\n"*string(record[2].seq)*"\n"
+        push!(order_of_genes,record[2].name)
+    end
+    aligned_sequences = readstring(pipeline(`muscle`,stdin=`echo $fasta_input`,stderr=DevNull))
+    single_line_aligned_sequences = single_line_sequence(aligned_sequences)
+    aligned_sequence_IDs = map(line->lstrip(line,'>'),split(single_line_aligned_sequences,'\n')[2:2:end])
+    aligned_sequences_seq_only = split(single_line_aligned_sequences,'\n')[3:2:end]
+    alignment_dict = Dict(zip(aligned_sequence_IDs,aligned_sequences_seq_only))
+    aligned_sequences = "\n"
+    for gene in order_of_genes
+        aligned_sequences = aligned_sequences*">"*gene*"\n"*alignment_dict[gene]*"\n"
+    end
+
+    return aligned_sequences
+end
+
 function align_sequences(sequence_table)
     println("Aligning sequences...")
     aligned_sequences_dict = OrderedDict()
-    for reference_sequence in eachrow(sequence_table)
-        fasta_input = ""
-        order_of_genes = []
-        for record in reference_sequence
-            fasta_input = fasta_input*">"*record[2].name*"\n"*string(record[2].seq)*"\n"
-            push!(order_of_genes,record[2].name)
-        end
-        aligned_sequences = readstring(pipeline(`muscle`,stdin=`echo $fasta_input`,stderr=DevNull))
-        single_line_aligned_sequences = single_line_sequence(aligned_sequences)
-        aligned_sequence_IDs = map(line->lstrip(line,'>'),split(single_line_aligned_sequences,'\n')[2:2:end])
-        aligned_sequences_seq_only = split(single_line_aligned_sequences,'\n')[3:2:end]
-        alignment_dict = Dict(zip(aligned_sequence_IDs,aligned_sequences_seq_only))
-        aligned_sequences = "\n"
-        for gene in order_of_genes
-            aligned_sequences = aligned_sequences*">"*gene*"\n"*alignment_dict[gene]*"\n"
-        end
+    
+    muscle_results = pmap(runmuscle,collect(eachrow(sequence_table)))
 
+    for (reference_sequence,aligned_sequences) in zip(eachrow(sequence_table),muscle_results)
         aligned_sequences_dict[reference_sequence[1].name] = aligned_sequences
     end
 
     return aligned_sequences_dict
 end
 
-function single_line_sequence(sequence)
+@everywhere function single_line_sequence(sequence)
     output_string = ""
     for line in split(sequence,'\n')
         if startswith(line,'>')
