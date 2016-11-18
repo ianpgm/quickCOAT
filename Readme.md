@@ -10,9 +10,13 @@ The following programs must be installed and executable from your $PATH:
 * [BLAST+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 * [muscle](http://www.drive5.com/muscle/manual/install.html)
 
-You will also need some way of building a phylogenetic tree using the sequence alignment that quickCOAT generates. Here are some options:
+Alignments generated using quickCOAT may benefit from trimming using Gblocks.
+* [Gblocks](http://molevol.cmima.csic.es/castresana/Gblocks.html)
+
+You will also need some way of building a phylogenetic tree using the multiple sequence alignment that quickCOAT generates. Here are some options:
 * [PhyML](http://www.atgc-montpellier.fr/phyml/binaries.php)
 * [FastTree](http://www.microbesonline.org/fasttree/)
+* [MrBayes](http://mrbayes.sourceforge.net/)
 
 ###Installation
 Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the files `quickcoat`,`quickcoat.fasta_to_phylip`,`quickcoat.run_test` executable and add them to your $PATH. For example, on Linux or MacOS, if `~/bin` is in your $PATH:
@@ -21,9 +25,11 @@ wget https://github.com/ianpgm/quickCOAT/archive/v0.2.0.tar.gz
 tar zxvf quickCOAT-0.2.0.tar.gz
 chmod +x quickCOAT-0.2.0/quickcoat
 chmod +x quickCOAT-0.2.0/quickcoat.fasta_to_phylip
+chmod +x quickCOAT-0.2.0/quickcoat.fasta_to_nexus
 chmod +x quickCOAT-0.2.0/quickcoat.run_test
 ln -s /path/to/quickCOAT-0.2.0/quickcoat ~/bin/quickcoat
 ln -s /path/to/quickCOAT-0.2.0/quickcoat.fasta_to_phylip ~/bin/quickcoat.fasta_to_phylip
+ln -s /path/to/quickCOAT-0.2.0/quickcoat.fasta_to_nexus ~/bin/quickcoat.fasta_to_phylip
 ln -s /path/to/quickCOAT-0.2.0/quickcoat.run_test ~/bin/quickcoat.run_test
 ```
 You can run the test to see whether quickCOAT is working correctly by typing `quickcoat.run_test`.
@@ -38,13 +44,13 @@ You can run the test to see whether quickCOAT is working correctly by typing `qu
   * `-i` or `--identity_threshold`: The minimum percentage identity from the BLAST results to have a pair of sequences count as an ortholog. For example, `35`. The default is 0 (no threshold.)
   * `-o` or `--output_folder`: The name of the folder quickCOAT will create with your output files. This folder cannot already exist, otherwise it will produce an error.
   * `-b` or `--bitscore_threshold`: The bitscore ratio threshold to have a pair of sequences count as an ortholog. For example, `0.9`. The default is 0 (no threshold).
-  * `-t` or `--threads`: The `num_threads` parameter that is passed to BLAST+.
+  * `-t` or `--threads`: The number of blastp instances that will be run in parallel.
 4. An example command: `quickcoat -r genome_of_interest.faa -q input_sequence_folder -e 0.00001 -i 35 -t 8 -o output_folder`
-5. Some tree-building software requires a phylip-formatted file for input (e.g. PhyML). A program for this is included. Use the following command: `quickcoat.fasta_to_phylip input_sequence_folder/concatenated_alignment.faa`.
+5. Some tree-building software requires a phylip- or nexus-formatted file for input (e.g. PhyML, MrBayes). Programs for this are included. Use the following commands: `quickcoat.fasta_to_phylip input_sequence_folder/concatenated_alignment.faa` and `quickcoat.fasta_to_nexus input_sequence_folder/concatenated_alignment.faa`. The files `concatenated_alignment.phy` or `concatenated_alignment.nex` respectively will appear in your output folder.
 
 ##Output
 The output will appear in the folder that you specify. The following files will be generated:
-* A lot of BLAST output files and a reference BLAST database. These should hopefully be pretty self explanatory, but you shouldn't have to look at these.
+* The reference BLAST database. You shouldn't have to look at this.
 * `ortholog_table.tsv`: This is a tab-separated-value table containing the identifiers all of the orthologs in your genome set.
 * `single_copy_ortholog_table.tsv`: This is a subset of the `ortholog_table.tsv` containing just those orthologs appearing exactly once in every genome. This is what the concatenated alignment is built on.
 * `concatenated_alignment.faa`: This is the concatenated protein alignment in FASTA format, suitable for building phylogenetic trees.
