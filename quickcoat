@@ -244,6 +244,11 @@ function find_single_copy_genes(ortholog_table, output_folder)
         end
     end
 
+    if size(single_copy_ortholog_table) == (0,0)
+        println("No orthologs found! Try modifying filtering parameters or genome set and try again.")
+        exit()
+    end
+
     println("Basing phylogeny on the following single-copy genes:\n")
     
     run_report = open(joinpath(output_folder,"report.txt"),"a")

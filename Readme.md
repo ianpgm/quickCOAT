@@ -55,6 +55,7 @@ The output will appear in the folder that you specify. The following files will 
 * `single_copy_ortholog_table.tsv`: This is a subset of the `ortholog_table.tsv` containing just those orthologs appearing exactly once in every genome. This is what the concatenated alignment is built on.
 * `concatenated_alignment.faa`: This is the concatenated protein alignment in FASTA format, suitable for building phylogenetic trees.
 * `report.txt`: This report stores the input files and parameters for the run, as well as the annotations of the proteins used for the alignment.
+* `blast_output`: The folder containing BLAST output for each blastp run (with bitscore ratio included by quickCOAT).
 
 ##How it works
 ![quickCOAT overview chart](https://github.com/ianpgm/quickCOAT/blob/master/overview_chart.png)
