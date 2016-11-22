@@ -14,7 +14,7 @@ function quickcoat_test()
     quickcoat_executable = joinpath(this_file_dir(),"quickcoat")
     query_folder = joinpath(this_file_dir(),"test_data")
     output_folder = joinpath(tempdir(),"quickcoat_test_"*join(rand(collect('A':'Z'),10)))
-    run(`$quickcoat_executable -r GCA_000474745.1_Acht1_1_protein.faa -q $query_folder -e 0.00001 -i 35 -o $output_folder`)
+    run(`$quickcoat_executable -r GCA_000474745.1_Acht1_1_protein.faa -q $query_folder -e 0.00001 -i 35 -o $output_folder -t 4`)
     println("\nTest complete. If it got this far without errors then quickCOAT is probably working.")
 end
 

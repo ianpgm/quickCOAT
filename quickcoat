@@ -99,6 +99,16 @@ addprocs(parameter_dict["threads"])
 @everywhere using DataStructures
 using Bio.Seq
 
+function write_parameters_to_report(parameter_dict)
+    run_report = open(joinpath(parameter_dict["output_folder"],"report.txt"),"w")
+    write(run_report, "quickCOAT run "*string(now())*"\n")
+    
+    for (parameter,value) in parameter_dict
+        write(run_report, parameter*" = "*string(value)*"\n")
+    end
+    close(run_report)
+end
+
 function makeblastdb(input_filename,output_folder,input_folder)
     println("Making BLAST database...")
     blast_db_name = joinpath(output_folder, "reference_blast_database")
@@ -184,7 +194,7 @@ end
 @everywhere function process_genome(genome_file, input_folder, output_folder,reference_file,max_bitscores,evalue_threshold,identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
     println("Processing $genome_file ...")
     blast_output = runblast(genome_file, "reference_blast_database", input_folder,output_folder)
-    wbsr_output_name = joinpath(output_folder,genome_file*reference_file*"_wbsr")
+    wbsr_output_name = joinpath(output_folder,"blast_output",genome_file*reference_file*"_wbsr")
     blast_output_with_bitscore_ratio = add_bitscore_ratio(blast_output,max_bitscores, wbsr_output_name)
     new_column = parse_blast_output(blast_output_with_bitscore_ratio,genome_file,evalue_threshold,identity_threshold,bitscore_ratio_threshold,genes_to_exclude)
     return new_column
@@ -193,6 +203,11 @@ end
 
 function make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude)
     genome_files = readdir(input_folder)[map(filename->endswith(filename,".faa"),readdir(input_folder))]
+    run_report = open(joinpath(output_folder,"report.txt"),"a")
+    write(run_report, "\nGenomes in this run:\n"*join(genome_files,"\n"))
+    close(run_report)
+
+
     genome_number = string(length(genome_files))
     println("Processing $genome_number genomes...")
     deleteat!(genome_files,findin(genome_files,[reference_file]))
@@ -231,9 +246,15 @@ function find_single_copy_genes(ortholog_table, output_folder)
 
     println("Basing phylogeny on the following single-copy genes:\n")
     
+    run_report = open(joinpath(output_folder,"report.txt"),"a")
+    write(run_report,"\n\nAlignment includes the following genes:\n\n")
+
     for item in single_copy_ortholog_table[:Ref_descriptions]
         println(item)
+        write(run_report,item*"\n")
     end
+
+    close(run_report)
 
     number_of_orthologs = string(length(single_copy_ortholog_table[:Ref_descriptions]))
     println("\n$number_of_orthologs orthologs will make up the alignment.")
@@ -349,6 +370,9 @@ function main(parameter_dict)
     bitscore_ratio_threshold = parameter_dict["bitscore_ratio_threshold"]
 
     mkdir(output_folder)
+    write_parameters_to_report(parameter_dict)
+
+    mkdir(joinpath(output_folder,"blast_output"))
     makeblastdb(reference_file,output_folder,input_folder)
     max_bitscores,genes_to_exclude = determine_max_bitscore(reference_file, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder)
     ortholog_table = make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude)
