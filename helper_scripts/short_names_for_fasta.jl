@@ -22,7 +22,7 @@ function make_name_short(long_name, existing_names)
         extra_space = join(fill(" ",10-length(short_name)))
         return short_name*extra_space
     else
-        return short_name[1:9]*short_name[end]
+        return short_name[1:9]*string(short_name[end])
     end
 end
 
