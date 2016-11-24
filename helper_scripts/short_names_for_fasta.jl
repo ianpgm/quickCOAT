@@ -14,7 +14,7 @@ end
 function make_name_short(long_name, existing_names)
     short_name = long_name[1:3]*join(matchall(r"_{1}.{1}",long_name),"")
     
-    if in(short_name*extra_space,existing_names)
+    if in(short_name,map(strip,existing_names))
         short_name = add_number_to_name(short_name)
     end
 
