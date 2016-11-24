@@ -27,7 +27,7 @@ function make_name_short(long_name, existing_names)
 
     else
         println("truncating name")
-        if in(short_name[1:9]*string(short_name[end]),existing_names))
+        if in(short_name[1:9]*string(short_name[end]),existing_names)
             println("Duplicate name found: "*short_name)
             short_name = add_number_to_name(short_name)
             println("New name: "*short_name)
