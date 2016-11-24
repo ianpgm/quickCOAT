@@ -22,8 +22,11 @@ function make_name_short(long_name, existing_names)
 
     if length(short_name) <= 10
         extra_space = join(fill(" ",10-length(short_name)))
+        println("Name <=10")
         return short_name*extra_space
+
     else
+        println("truncating name")
         return short_name[1:9]*string(short_name[end])
     end
 end
