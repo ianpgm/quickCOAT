@@ -11,7 +11,7 @@ end
 function display_help()
     println("\nInstructions for use:\n")
 
-    readme_file = readlines(open(joinpath(this_file_dir(),"Readme.md")))
+    readme_file = readlines(open(joinpath(this_file_dir(),"..","Readme.md")))
     usage =false
     for line in readme_file
 
@@ -274,7 +274,7 @@ function get_sequences(single_copy_ortholog_table,reference_file,input_folder)
     delete!(single_copy_ortholog_table,:Ref_descriptions)
     rename!(single_copy_ortholog_table,:Ref_genes,Symbol(reference_file))
     for genome_file in names(single_copy_ortholog_table)[2:end]
-        single_copy_ortholog_table[genome_file] = map(single_set->collect(single_set)[1],single_copy_ortholog_table[genome_file])
+        single_copy_ortholog_table[genome_file] = map(first,single_copy_ortholog_table[genome_file])
     end
 
     for genome_file in map(string,names(single_copy_ortholog_table))

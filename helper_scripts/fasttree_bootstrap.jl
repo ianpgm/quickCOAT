@@ -59,7 +59,7 @@ function run_FastTree(fasta_file)
 	FastTreeCompare_dir = joinpath(homedir(),"programs","FastTreeCompare")
 	CompareToBootstrap_path = joinpath(FastTreeCompare_dir,"CompareToBootstrap.pl")
 
-	bootstrapped_tree = readlines(`perl -I $FastTreeCompare_dir $CompareToBootstrap_path -tree $master_tree_output -boot $bootstrap_trees_output`)
+	bootstrapped_tree = readstring(`perl -I $FastTreeCompare_dir $CompareToBootstrap_path -tree $master_tree_output -boot $bootstrap_trees_output`)
 	return bootstrapped_tree
 end
 
@@ -67,7 +67,8 @@ function rename_tree(tree, numeric_id_dict, fasta_file)
 	original_id_dict = Dict(zip(values(numeric_id_dict),keys(numeric_id_dict)))
 
 	for numeric_id in values(numeric_id_dict)
-		tree = replace(tree, numeric_id, original_id_dict[numeric_id])
+		println("Replacing $numeric_id with "*original_id_dict[numeric_id])
+		tree = replace(tree, numeric_id, string(original_id_dict[numeric_id]))
 	end
 	output_file = open(join(split(fasta_file, '.')[1:end-1],'.')*".bootstrapped.fast.tree","w")
 	write(output_file, tree)
