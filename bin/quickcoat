@@ -29,8 +29,8 @@ function display_help()
 end
 
 function parse_parameters(arguments)
-    println("quickCOAT: quick Concatenated Ortholog Alignment Trees")
-    println("Ian P.G. Marshall 2016")
+    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.3.3+")
+    println("Ian P.G. Marshall 2016-2017")
     println("https://github.com/ianpgm/quickCOAT")
 
     parameter_dict = Dict()
@@ -143,12 +143,29 @@ function determine_max_bitscore(db_filename, output_folder, evalue_threshold, id
     return (max_bitscores,genes_to_exclude)
 end
 
+@everywhere function float_to_string(input::Float64)
+    return string(convert(Int64,input))
+end
+
+@everywhere function float_to_string(input::Int64)
+    return string(input)
+end
+
+@everywhere function float_to_string(input::String)
+    return input
+end
+
+@everywhere function float_to_string(input::SubString{String})
+    return input
+end
+
+
 @everywhere function runblast(query_filename, db_filename, input_folder,output_folder)
     println("Running blastp...")
     query_fullpath = joinpath(input_folder,query_filename)
     db_fullpath = joinpath(output_folder,db_filename)
     raw_blast_output = readdlm(open(`blastp -query $query_fullpath -db $db_fullpath -outfmt 6`)[2],'\t')
-    blast_output = DataFrame(qseqid = map(string,raw_blast_output[:,1]),sseqid = map(string,raw_blast_output[:,2]),pident=raw_blast_output[:,3],evalue=raw_blast_output[:,11],bitscore=raw_blast_output[:,12])
+    blast_output = DataFrame(qseqid = map(float_to_string,raw_blast_output[:,1]),sseqid = map(float_to_string,raw_blast_output[:,2]),pident=raw_blast_output[:,3],evalue=raw_blast_output[:,11],bitscore=raw_blast_output[:,12])
     return blast_output
 end
 
