@@ -384,6 +384,91 @@ function concatenate_alignments(aligned_sequences,genome_names, output_folder)
     return output_string
 end
 
+function make_mmseqs_db(input_folder::AbstractString, output_folder::AbstractString)
+    genome_files = readdir(input_folder)[map(filename->endswith(filename,".faa"),readdir(input_folder))]
+    db_string = ""
+    output_filename = joinpath(output_folder,"mmseqs_db.fasta")
+    db_filename = joinpath(output_folder,"mmseqs_db")
+    for file in genome_files
+        genome = open(FASTAReader, joinpath(input_folder,file))
+        for record in genome
+            output_id = file*"_"*seqname(record)
+            output_sequence = string(sequence(record))
+            db_string = db_string*">"*output_id*"\n"*output_sequence*"\n"
+        end
+    end
+    write(output_filename,db_string)
+    run(`mmseqs createdb $output_filename $db_filename`)
+end
+
+
+function run_mmseqs(output_folder::AbstractString, threads::Int64, evalue_threshold::Float64, identity_threshold::Float64)
+    mmseqs_db = joinpath(output_folder,"mmseqs_db")
+    mmseqs_db_cluster = joinpath(output_folder,"mmseqs_db.cluster")
+    threads_string = string(threads)
+    evalue_string = string(evalue_threshold)
+    identity_string = string(identity_threshold)
+    tsv_file = mmseqs_db_cluster*".tsv"
+    temp_dir = tempdir()
+    run(`mmseqs cluster $mmseqs_db $mmseqs_db_cluster $temp_dir -e $evalue_string --min-seq-id $identity_string --threads $threads_string`)
+    run(`mmseqs createtsv $mmseqs_db $mmseqs_db $mmseqs_db_cluster`)
+end
+
+function parse_mmseqs_output(mmseqs_cluster_tsv::AbstractString,input_folder::AbstractString, output_folder::AbstractString)
+    output_df = DataFrame(Ref_genes = [], Ref_descriptions = [])
+    genome_files = readdir(input_folder)[map(filename->endswith(filename,".faa"),readdir(input_folder))]
+    for file in genome_files
+        output_df[Symbol(file)] = []
+    end
+
+    fasta_filename = joinpath(output_folder,"mmseqs_db.fasta")
+    description_dict = Dict()
+
+
+    for file in genome_files
+        genome = open(FASTAReader, joinpath(input_folder,file))
+        for record in genome
+            description_dict[file*"_"*seqname(record)] = metadata(record).description
+        end
+    end
+
+
+
+    for line in eachline(fasta_filename)
+        if startswith(line, '>')
+            description_dict[split(strip(line,'>'),' ')[1]] = join(split(strip(line,'>'),' ')[2:end], ' ')
+        end
+    end
+
+    for line in eachline(mmseqs_cluster_tsv)
+        cluster_name = split(line, '\t')[1]
+        cluster_member = split(line, '\t')[2]
+        member_genome = split(cluster_member, ".faa")[1]*".faa"
+        member_accession = split(cluster_member, ".faa")[2]
+        if cluster_name in output_df[:Ref_genes]
+            if isna(output_df[output_df[:Ref_genes] .== cluster_name,Symbol(member_genome)])
+                output_df[output_df[:Ref_genes] .== cluster_name,Symbol(member_genome)] = Set([member_accession])
+            else
+                push!(output_df[output_df[:Ref_genes] .== cluster_name,Symbol(member_genome)],member_accession)
+            end
+        else
+            newline = DataFrame(Ref_genes = [member_accession], Ref_descriptions = [description_dict[cluster_member]])
+            for file in genome_files
+                newline[Symbol(file)] = []
+            end
+            newline[Symbol(member_genome),1] = Set([member_accession])
+            output_df = vcat(output_df, newline)
+        end
+    end
+
+    return output_df
+end
+
+
+
+
+
+
 
 
 function main(parameter_dict)
@@ -397,10 +482,18 @@ function main(parameter_dict)
     mkdir(output_folder)
     write_parameters_to_report(parameter_dict)
 
-    mkdir(joinpath(output_folder,"blast_output"))
-    makeblastdb(reference_file,output_folder,input_folder)
-    max_bitscores,genes_to_exclude = determine_max_bitscore(reference_file, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder)
-    ortholog_table = make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude)
+    if parameter_dict["cluster_method"] == "blastp"
+        mkdir(joinpath(output_folder,"blast_output"))
+        makeblastdb(reference_file,output_folder,input_folder)
+        max_bitscores,genes_to_exclude = determine_max_bitscore(reference_file, output_folder, evalue_threshold, identity_threshold,bitscore_ratio_threshold,input_folder)
+        ortholog_table = make_table(input_folder, reference_file, evalue_threshold, identity_threshold, output_folder, max_bitscores, bitscore_ratio_threshold,genes_to_exclude)
+    elseif parameter_dict["cluster_method"] == "mmseqs"
+        #ortholog table function for mmseqs clustering here
+    else
+        println("Unknown cluster_method: "*parameter_dict["cluster_method"])
+        println("Please use either \"blastp\" or \"mmseqs\"")
+        exit()
+    end
     single_copy_ortholog_table = find_single_copy_genes(ortholog_table, output_folder)
     sequence_table = get_sequences(single_copy_ortholog_table,reference_file,input_folder)
     aligned_sequences = align_sequences(sequence_table)
