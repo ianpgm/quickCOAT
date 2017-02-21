@@ -43,6 +43,7 @@ function parse_parameters(arguments)
     parameter_dict["bitscore_ratio_threshold"] = 0.0
     parameter_dict["output_folder"] = "ortholog_table_output"
     parameter_dict["threads"] = 2
+    parameter_dict["cluster_method"] = "blastp"
 
     if length(arguments) == 0
         println("No arguments given")
@@ -71,6 +72,8 @@ function parse_parameters(arguments)
             parameter_dict["bitscore_ratio_threshold"] = parse(Float64,value)
         elseif marker == "-t"||marker == "--threads"
             parameter_dict["threads"] = parse(Int32,value)
+        elseif marker == "-c"||marker == "--cluster_method"
+            parameter_dict["cluster_method"] = value
         end
     end
     
