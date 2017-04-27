@@ -21,10 +21,11 @@ You will also need some way of building a phylogenetic tree using the multiple s
 ###Installation
 Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the files in the `bin` directory executable and add them to your $PATH. One way of achieving this on Linux or MacOS is:
 ```
-wget https://github.com/ianpgm/quickCOAT/archive/v0.2.0.tar.gz
-tar zxvf quickCOAT-0.2.0.tar.gz
-chmod +x quickCOAT-0.2.0/quickcoat/bin/
-echo "export PATH=$PATH:/path/to/quickCOAT-0.2.0/quickcoat/bin/">>~/.profile
+wget https://github.com/ianpgm/quickCOAT/archive/v0.3.6.tar.gz
+tar zxvf quickCOAT-0.3.6.tar.gz
+chmod +x quickCOAT-0.3.6/quickcoat/bin/
+cd quickCOAT-0.3.6/quickcoat/bin/
+echo "export PATH=$PWD:\$PATH">>~/.profile
 ```
 Open a new terminal window for the changes to take effect. 
 
