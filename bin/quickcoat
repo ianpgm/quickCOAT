@@ -29,7 +29,7 @@ function display_help()
 end
 
 function parse_parameters(arguments)
-    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.3.3+")
+    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.3.4")
     println("Ian P.G. Marshall 2016-2017")
     println("https://github.com/ianpgm/quickCOAT")
 
