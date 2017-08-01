@@ -22,14 +22,14 @@ function display_help()
         end
 
         if usage
-            print(line)
+            println(line)
         end
 
     end
 end
 
 function parse_parameters(arguments)
-    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.3.6")
+    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.3.7")
     println("Ian P.G. Marshall 2016-2017")
     println("https://github.com/ianpgm/quickCOAT")
 
@@ -83,6 +83,7 @@ function parse_parameters(arguments)
         println("Type quickcoat -h for help")
         exit()
     elseif in(parameter_dict["output_folder"],readdir())
+        output_folder = parameter_dict["output_folder"]
         println("Error: output folder $output_folder already exists. Delete it or use another name and try again.")
         println("Type quickcoat -h for help")
         exit()
@@ -173,7 +174,7 @@ end
     println("Parsing blastp output...")
     result_dict = OrderedDict()
     
-    filtered_blast_output_df = blast_output_df[(blast_output_df[:evalue] .< evalue_threshold)&(blast_output_df[:pident] .> identity_threshold)&(blast_output_df[:bitscore_ratio] .> bitscore_ratio_threshold),:]
+    filtered_blast_output_df = blast_output_df[convert(DataArrays.DataArray{Bool,1},(blast_output_df[:evalue] .< evalue_threshold).&(blast_output_df[:pident] .> identity_threshold).&(blast_output_df[:bitscore_ratio] .> bitscore_ratio_threshold)),:]
     filtered_blast_output_df = filtered_blast_output_df[convert(DataArrays.DataArray{Bool,1},map(query_id->!in(query_id,genes_to_exclude),filtered_blast_output_df[:sseqid])),:]
 
 
