@@ -29,7 +29,7 @@ function display_help()
 end
 
 function parse_parameters(arguments)
-    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.3.7")
+    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.3.8")
     println("Ian P.G. Marshall 2016-2017")
     println("https://github.com/ianpgm/quickCOAT")
 
@@ -98,7 +98,9 @@ addprocs(parameter_dict["threads"])
 
 @everywhere using DataFrames
 @everywhere using DataStructures
+@everywhere using CSV
 using Bio.Seq
+using Missings
 
 function write_parameters_to_report(parameter_dict)
     run_report = open(joinpath(parameter_dict["output_folder"],"report.txt"),"w")
@@ -174,8 +176,8 @@ end
     println("Parsing blastp output...")
     result_dict = OrderedDict()
     
-    filtered_blast_output_df = blast_output_df[convert(DataArrays.DataArray{Bool,1},(blast_output_df[:evalue] .< evalue_threshold).&(blast_output_df[:pident] .> identity_threshold).&(blast_output_df[:bitscore_ratio] .> bitscore_ratio_threshold)),:]
-    filtered_blast_output_df = filtered_blast_output_df[convert(DataArrays.DataArray{Bool,1},map(query_id->!in(query_id,genes_to_exclude),filtered_blast_output_df[:sseqid])),:]
+    filtered_blast_output_df = blast_output_df[(blast_output_df[:evalue] .< evalue_threshold).&(blast_output_df[:pident] .> identity_threshold).&(blast_output_df[:bitscore_ratio] .> bitscore_ratio_threshold),:]
+    filtered_blast_output_df = filtered_blast_output_df[map(query_id->!in(query_id,genes_to_exclude),filtered_blast_output_df[:sseqid]),:]
 
 
     for row in eachrow(filtered_blast_output_df)
@@ -204,7 +206,7 @@ end
     end
     blast_df[:bitscore_ratio] = bitscore_ratios
     
-    writetable(wbsr_output_name,blast_df, separator='\t')
+    CSV.write(wbsr_output_name,blast_df; delim='\t')
     return blast_df
 end
 
@@ -241,7 +243,7 @@ function make_table(input_folder, reference_file, evalue_threshold, identity_thr
         orthologue_table = join(orthologue_table, new_column, on=:Ref_genes,kind=:left)
     end
 
-    writetable(joinpath(output_folder,"ortholog_table.tsv"), orthologue_table, separator='\t')
+    CSV.write(joinpath(output_folder,"ortholog_table.tsv"), orthologue_table; delim='\t')
 
     return orthologue_table
 end
@@ -251,7 +253,7 @@ function find_single_copy_genes(ortholog_table, output_folder)
     table_width = size(ortholog_table)[2]
     single_copy_ortholog_table = DataFrame()
     for reference_gene in eachrow(ortholog_table)
-        if any(map(item->isna(item[2]),reference_gene)) == false
+        if any(map(item->ismissing(item[2]),reference_gene)) == false
             if vec(map(length,convert(Array,reference_gene)))[3:end] == ones(Int64,table_width-2)
                 if size(single_copy_ortholog_table,1) == 0
                     single_copy_ortholog_table = reference_gene.df[reference_gene.row,:]
@@ -281,7 +283,7 @@ function find_single_copy_genes(ortholog_table, output_folder)
 
     number_of_orthologs = string(length(single_copy_ortholog_table[:Ref_descriptions]))
     println("\n$number_of_orthologs orthologs will make up the alignment.")
-    writetable(joinpath(output_folder,"single_copy_ortholog_table.tsv"), single_copy_ortholog_table, separator='\t')
+    CSV.write(joinpath(output_folder,"single_copy_ortholog_table.tsv"), single_copy_ortholog_table; delim='\t')
     return single_copy_ortholog_table
 end
 
@@ -290,7 +292,7 @@ function get_sequences(single_copy_ortholog_table,reference_file,input_folder)
     println("Retrieving sequences from genomes...")
     sequence_df = DataFrame()
     delete!(single_copy_ortholog_table,:Ref_descriptions)
-    rename!(single_copy_ortholog_table,:Ref_genes,Symbol(reference_file))
+    rename!(single_copy_ortholog_table,:Ref_genes => Symbol(reference_file))
     for genome_file in names(single_copy_ortholog_table)[2:end]
         single_copy_ortholog_table[genome_file] = map(first,single_copy_ortholog_table[genome_file])
     end
