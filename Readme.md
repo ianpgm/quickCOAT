@@ -1,9 +1,9 @@
-#quickCOAT: quick Concatenated Ortholog Alignment Tree
+# quickCOAT: quick Concatenated Ortholog Alignment Tree
 
 quickCOAT produces a concatenated protein alignment based on input protein sequences from several genomes. It starts out by defining single-copy orthologs amongst the set of genomes you specify and uses those to build the alignment. A set of closely related organisms will therefore have a long alignment to compensate for limited divergence, while distantly related genome phylogenies will be based on fewer orthologs. In this way, quickCOAT is a fast, automated way to define the best possible set of orthologs for your concatenated protein phylogeny.
 
-##Installation
-###Prerequisites
+## Installation
+### Prerequisites
 The following programs must be installed and executable from your $PATH:
 * [Julia](http://www.julialang.org/) version 1.0 or higher
   * Julia packages DataFrames, DataStructures, Bio, CSV, and Missings must also be installed. To install these, type `julia` to enter the Julia REPL then `]add DataFrames DataStructures CSV Missings` to install the package. Once package installation is complete, type backspace then `exit()` to exit the Julia REPL.
@@ -18,7 +18,7 @@ You will also need some way of building a phylogenetic tree using the multiple s
 * [FastTree](http://www.microbesonline.org/fasttree/)
 * [MrBayes](http://mrbayes.sourceforge.net/)
 
-###Installation
+### Installation
 Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the files in the `bin` directory executable and add them to your $PATH. One way of achieving this on Linux or MacOS is:
 ```
 wget https://github.com/ianpgm/quickCOAT/archive/v0.4.0.tar.gz
@@ -31,7 +31,7 @@ Open a new terminal window for the changes to take effect.
 
 You can run the test to see whether quickCOAT is working correctly by typing `quickcoat.run_test`.
 
-##Usage
+## Usage
 1. Make a new folder.
 2. Copy all of the genomes you want to analyse into that new folder. Each genome should be a single fasta amino acid file containing that genome's protein sequences. The filename must end with `.faa` for quickCOAT to recognise it as an input file.
 3. Run quickCOAT. Type `quickcoat` followed by the following parameters:
@@ -45,7 +45,7 @@ You can run the test to see whether quickCOAT is working correctly by typing `qu
 4. An example command: `quickcoat -r genome_of_interest.faa -q input_sequence_folder -e 0.00001 -i 35 -t 8 -o output_folder`
 5. Some tree-building software requires a phylip- or nexus-formatted file for input (e.g. PhyML, MrBayes). Programs for this are included. Use the following commands: `quickcoat.fasta_to_phylip input_sequence_folder/concatenated_alignment.faa` and `quickcoat.fasta_to_nexus input_sequence_folder/concatenated_alignment.faa`. The files `concatenated_alignment.phy` or `concatenated_alignment.nex` respectively will appear in your output folder.
 
-##Output
+## Output
 The output will appear in the folder that you specify. The following files will be generated:
 * The reference BLAST database. You shouldn't have to look at this.
 * `ortholog_table.tsv`: This is a tab-separated-value table containing the identifiers all of the orthologs in your genome set.
@@ -54,8 +54,8 @@ The output will appear in the folder that you specify. The following files will 
 * `report.txt`: This report stores the input files and parameters for the run, as well as the annotations of the proteins used for the alignment.
 * `blast_output`: The folder containing BLAST output for each blastp run (with bitscore ratio included by quickCOAT).
 
-##How it works
+## How it works
 ![quickCOAT overview chart](https://github.com/ianpgm/quickCOAT/blob/master/overview_chart.png)
 
-##Getting help
+## Getting help
 If something isn't working, please post an [issue on Github](https://github.com/ianpgm/quickCOAT/issues) or send an email to the author, ianpgm at bios dot au dot dk.
