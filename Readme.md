@@ -6,7 +6,7 @@ quickCOAT produces a concatenated protein alignment based on input protein seque
 ###Prerequisites
 The following programs must be installed and executable from your $PATH:
 * [Julia](http://www.julialang.org/) version 1.0 or higher
-  * Julia packages DataFrames, DataStructures, Bio, CSV, and Missings must also be installed. To install these, type `julia` to enter the Julia REPL then `]add DataFrames DataStructures Bio CSV Missings` to install the package. Once package installation is complete, type backspace then `exit()` to exit the Julia REPL.
+  * Julia packages DataFrames, DataStructures, Bio, CSV, and Missings must also be installed. To install these, type `julia` to enter the Julia REPL then `]add DataFrames DataStructures CSV Missings` to install the package. Once package installation is complete, type backspace then `exit()` to exit the Julia REPL.
 * [BLAST+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 * [muscle](http://www.drive5.com/muscle/manual/install.html)
 
