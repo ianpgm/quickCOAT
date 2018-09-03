@@ -5,8 +5,8 @@ quickCOAT produces a concatenated protein alignment based on input protein seque
 ##Installation
 ###Prerequisites
 The following programs must be installed and executable from your $PATH:
-* [Julia](http://www.julialang.org/) version 0.5 or higher
-  * Julia packages DataFrames, DataStructures, and Bio must also be installed. The following command will install the necessary packages: `julia -e "Pkg.add(\"DataFrames\");Pkg.add(\"DataStructures\");Pkg.add(\"Bio\")"`
+* [Julia](http://www.julialang.org/) version 1.0 or higher
+  * Julia packages DataFrames, DataStructures, Bio, CSV, and Missings must also be installed. To install these, type `julia` to enter the Julia REPL then `]add DataFrames DataStructures Bio CSV Missings` to install the package. Once package installation is complete, type backspace then `exit()` to exit the Julia REPL.
 * [BLAST+](https://blast.ncbi.nlm.nih.gov/Blast.cgi?CMD=Web&PAGE_TYPE=BlastDocs&DOC_TYPE=Download)
 * [muscle](http://www.drive5.com/muscle/manual/install.html)
 
@@ -21,10 +21,10 @@ You will also need some way of building a phylogenetic tree using the multiple s
 ###Installation
 Download the [newest release](https://github.com/ianpgm/quickCOAT/releases/), make the files in the `bin` directory executable and add them to your $PATH. One way of achieving this on Linux or MacOS is:
 ```
-wget https://github.com/ianpgm/quickCOAT/archive/v0.3.6.tar.gz
-tar zxvf quickCOAT-0.3.6.tar.gz
-chmod +x quickCOAT-0.3.6/quickcoat/bin/
-cd quickCOAT-0.3.6/quickcoat/bin/
+wget https://github.com/ianpgm/quickCOAT/archive/v0.4.0.tar.gz
+tar zxvf quickCOAT-0.4.0.tar.gz
+chmod +x quickCOAT-0.4.0/quickcoat/bin/
+cd quickCOAT-0.4.0/quickcoat/bin/
 echo "export PATH=$PWD:\$PATH">>~/.profile
 ```
 Open a new terminal window for the changes to take effect. 

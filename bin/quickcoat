@@ -29,8 +29,8 @@ function display_help()
 end
 
 function parse_parameters(arguments)
-    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.3.8")
-    println("Ian P.G. Marshall 2016-2017")
+    println("quickCOAT: quick Concatenated Ortholog Alignment Trees version 0.4.0")
+    println("Ian P.G. Marshall 2016-2018")
     println("https://github.com/ianpgm/quickCOAT")
 
     parameter_dict = Dict()
@@ -94,13 +94,17 @@ end
 
 parameter_dict = parse_parameters(ARGS)
 
+using Distributed
+
 addprocs(parameter_dict["threads"])
 
 @everywhere using DataFrames
 @everywhere using DataStructures
 @everywhere using CSV
-using Bio.Seq
+@everywhere using DelimitedFiles
 using Missings
+using Dates
+
 
 function write_parameters_to_report(parameter_dict)
     run_report = open(joinpath(parameter_dict["output_folder"],"report.txt"),"w")
@@ -167,7 +171,7 @@ end
     println("Running blastp...")
     query_fullpath = joinpath(input_folder,query_filename)
     db_fullpath = joinpath(output_folder,db_filename)
-    raw_blast_output = readdlm(open(`blastp -query $query_fullpath -db $db_fullpath -outfmt 6`)[2],'\t')
+    raw_blast_output = open(s->readdlm(s,'\t'),`blastp -query $query_fullpath -db $db_fullpath -outfmt 6`)
     blast_output = DataFrame(qseqid = map(float_to_string,raw_blast_output[:,1]),sseqid = map(float_to_string,raw_blast_output[:,2]),pident=raw_blast_output[:,3],evalue=raw_blast_output[:,11],bitscore=raw_blast_output[:,12])
     return blast_output
 end
@@ -230,7 +234,7 @@ function make_table(input_folder, reference_file, evalue_threshold, identity_thr
 
     genome_number = string(length(genome_files))
     println("Processing $genome_number genomes...")
-    deleteat!(genome_files,findin(genome_files,[reference_file]))
+    deleteat!(genome_files,findall(n->n==reference_file,genome_files))
     orthologue_table = DataFrame()
     reference_file_all_lines =readlines(open(joinpath(input_folder,reference_file)))
     reference_file_id_lines = reference_file_all_lines[map(line->startswith(line,">"),reference_file_all_lines)]
@@ -256,9 +260,10 @@ function find_single_copy_genes(ortholog_table, output_folder)
         if any(map(item->ismissing(item[2]),reference_gene)) == false
             if vec(map(length,convert(Array,reference_gene)))[3:end] == ones(Int64,table_width-2)
                 if size(single_copy_ortholog_table,1) == 0
-                    single_copy_ortholog_table = reference_gene.df[reference_gene.row,:]
+                    single_copy_ortholog_table = DataFrame(convert(Array,reference_gene))
+                    rename!(single_copy_ortholog_table,Dict(zip(names(single_copy_ortholog_table),names(ortholog_table))))
                 else
-                    append!(single_copy_ortholog_table,reference_gene.df[reference_gene.row,:])
+                    push!(single_copy_ortholog_table,convert(Array,reference_gene))
                 end
             end
         end
@@ -300,11 +305,7 @@ function get_sequences(single_copy_ortholog_table,reference_file,input_folder)
     for genome_file in map(string,names(single_copy_ortholog_table))
         genome_specific_sequences = []
 
-        genome_dict = Dict()
-        genome = open(FASTAReader, joinpath(input_folder,genome_file))
-        for record in genome
-            genome_dict[record.name] = record
-        end
+        genome_dict = parse_multifasta(joinpath(input_folder,genome_file))
 
 
 
@@ -323,10 +324,10 @@ end
     fasta_input = ""
     order_of_genes = []
     for record in input_row
-        fasta_input = fasta_input*">"*record[2].name*"\n"*string(record[2].seq)*"\n"
-        push!(order_of_genes,record[2].name)
+        fasta_input = fasta_input*">"*record[2][1]*"\n"*record[2][3]*"\n"
+        push!(order_of_genes,record[2][1])
     end
-    aligned_sequences = readstring(pipeline(`muscle`,stdin=`echo $fasta_input`,stderr=DevNull))
+    aligned_sequences = read(pipeline(`muscle`,stdin=`echo $fasta_input`,stderr=devnull),String)
     single_line_aligned_sequences = single_line_sequence(aligned_sequences)
     aligned_sequence_IDs = map(line->lstrip(line,'>'),split(single_line_aligned_sequences,'\n')[2:2:end])
     aligned_sequences_seq_only = split(single_line_aligned_sequences,'\n')[3:2:end]
@@ -346,7 +347,7 @@ function align_sequences(sequence_table)
     muscle_results = pmap(runmuscle,collect(eachrow(sequence_table)))
 
     for (reference_sequence,aligned_sequences) in zip(eachrow(sequence_table),muscle_results)
-        aligned_sequences_dict[reference_sequence[1].name] = aligned_sequences
+        aligned_sequences_dict[reference_sequence[1]] = aligned_sequences
     end
 
     return aligned_sequences_dict
@@ -409,4 +410,42 @@ function main(parameter_dict)
     println("quickCOAT is now done. Results in $output_folder")
 end
 
+function parse_fasta(input_string)
+	splitstring = split(input_string,'\n')
+	description = splitstring[1]
+	ID = split(description,' ')[1]
+	sequence = join(splitstring[2:end])
+	return (ID, description, sequence)
+end
+
+function parse_multifasta(fasta_file)
+    fasta_string = read(open(fasta_file),String)
+	fasta_records = split(fasta_string,"\n>")
+    fasta_tuples =  map(parse_fasta, fasta_records)
+    fasta_dict = Dict(zip(map(i->i[1],fasta_tuples),fasta_tuples))
+end
+
+
+
+#= function parsefasta(filename::AbstractString)
+    fasta_lines= readlines(filename)
+    record_ids = map(l->split(strip(l,'>')," ")[1],filter(l->startswith(l,">"),fasta_lines))
+    current_sequence = ""
+    sequences = []
+    for line in fasta_lines
+        if startswith(line,">")
+            if current_sequence ==""
+                continue
+            else
+                push!(sequences,current_sequence)
+                current_sequence = ""
+            end
+        else
+            current_sequence = current_sequence*strip(line,'\n')
+        end
+    end
+    sequences = collect(zip(record_ids,sequences))
+    return Dict(zip(record_ids,sequences))
+end
+ =#
 main(parameter_dict)
